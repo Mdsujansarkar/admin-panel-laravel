@@ -13,9 +13,16 @@ class PermissionController extends Controller
     /**
      * Display a listing of the resource.
      */
+     public  function __construct()
+    {
+         $this->middleware('can:permission list', ['only' => ['index','show']]);
+         $this->middleware('can:permission create', ['only' => ['create','store']]);
+         $this->middleware('can:permission edit', ['only' => ['edit','update']]);
+         $this->middleware('can:permission delete', ['only' => ['destroy']]);
+    }
     public function index()
     {
-       return $permissions = Permission::latest()->paginate(5);
+        $permissions = Permission::latest()->paginate(5);
         return view('admin.permission.index',compact('permissions'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
     }
