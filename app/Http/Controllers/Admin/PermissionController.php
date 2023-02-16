@@ -13,17 +13,32 @@ class PermissionController extends Controller
     /**
      * Display a listing of the resource.
      */
-     public  function __construct()
+    public  function __construct()
     {
-         $this->middleware('can:permission list', ['only' => ['index','show']]);
-         $this->middleware('can:permission create', ['only' => ['create','store']]);
-         $this->middleware('can:permission edit', ['only' => ['edit','update']]);
-         $this->middleware('can:permission delete', ['only' => ['destroy']]);
+        $this->middleware('can:permission list', ['only' => ['index', 'show']]);
+        $this->middleware('can:permission create', ['only' => ['create', 'store']]);
+        $this->middleware('can:permission edit', ['only' => ['edit', 'update']]);
+        $this->middleware('can:permission delete', ['only' => ['destroy']]);
     }
     public function index()
     {
-        $permissions = Permission::latest()->paginate(5);
-        return view('admin.permission.index',compact('permissions'))
+        $permissions = (new Permission)->newQuery();
+        if (request()->has('search')) {
+            $permissions->where('name', 'Like', '%' . request()->input('search') . '%');
+        }
+        if (request()->query('sort')) {
+            $attribute = request()->query('sort');
+            $sort_order = 'ASC';
+            if (strncmp($attribute, '-', 1) === 0) {
+                $sort_order = 'DESC';
+                $attribute = substr($attribute, 1);
+            }
+            $permissions->orderBy($attribute, $sort_order);
+        } else {
+            $permissions->latest();
+        }
+        $permissions = $permissions->paginate(5);
+        return view('admin.permission.index', compact('permissions'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
     }
 
@@ -41,11 +56,11 @@ class PermissionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:'.config('permission.table_names.permissions', 'permissions').',name',
+            'name' => 'required|string|max:255|unique:' . config('permission.table_names.permissions', 'permissions') . ',name',
         ]);
         Permission::create($request->all());
         return redirect()->route('permission.index')
-                        ->with('message','Permission created successfully.');
+            ->with('message', 'Permission created successfully.');
     }
 
     /**
@@ -53,7 +68,7 @@ class PermissionController extends Controller
      */
     public function show(Permission $permission)
     {
-        return view('admin.permission.show',compact('permission'));
+        return view('admin.permission.show', compact('permission'));
     }
 
     /**
@@ -61,7 +76,7 @@ class PermissionController extends Controller
      */
     public function edit(Permission $permission)
     {
-        return view('admin.permission.edit',compact('permission'));
+        return view('admin.permission.edit', compact('permission'));
     }
 
     /**
@@ -70,11 +85,11 @@ class PermissionController extends Controller
     public function update(Request $request, Permission $permission)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:'.config('permission.table_names.permissions', 'permissions').',name,'.$permission->id,
+            'name' => 'required|string|max:255|unique:' . config('permission.table_names.permissions', 'permissions') . ',name,' . $permission->id,
         ]);
         $permission->update($request->all());
         return redirect()->route('permission.index')
-                        ->with('message','Permission updated successfully.');
+            ->with('message', 'Permission updated successfully.');
     }
 
     /**
@@ -84,6 +99,6 @@ class PermissionController extends Controller
     {
         $permission->delete();
         return redirect()->route('permission.index')
-                        ->with('message','Permission deleted successfully');
+            ->with('message', 'Permission deleted successfully');
     }
 }
