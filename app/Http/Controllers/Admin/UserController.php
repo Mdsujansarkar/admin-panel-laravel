@@ -1,16 +1,18 @@
 <?php
-
+declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use Auth;
+use Validator;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
-use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Services\Admin\UserService;
 
 class UserController extends Controller
 {
@@ -58,16 +60,11 @@ class UserController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreUserRequest  $request)
+    public function store(StoreUserRequest  $request, UserService $userService)
     {
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-        if (!empty($request->roles)) {
-            $user->assignRole($request->roles);
-        }
+        $data = (object) $request->all();
+        $user = $userService ->createUser( $data );
+        $userService->assignRole($data, $user);
         return redirect()->route('user.index')
             ->with('message', 'User created successfully.');
     }
@@ -143,7 +140,7 @@ class UserController extends Controller
     }
     public function changePasswordStore(Request $request)
     {
-        $validator = \Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'old_password' => ['required'],
             'new_password' => ['required', Rules\Password::defaults()],
             'confirm_password' => ['required', 'same:new_password', Rules\Password::defaults()],
