@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Auth;
+use App\Models\Role;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rules;
-use App\Models\Role;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\RedirectResponse;
 
 class UserController extends Controller
 {
@@ -130,5 +131,51 @@ class UserController extends Controller
 
         return redirect()->route('user.index')
             ->with('message', 'User deleted successfully');
+    }
+    public function accountInfo()
+    {
+        $user = Auth::user();
+        return view('admin.user.account_info', compact('user'));
+    }
+    public function accountInfoStore(Request $request)
+    {
+        $request->validateWithBag('account', [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . \Auth::user()->id],
+        ]);
+        $user = \Auth::user()->update($request->except(['_token']));
+        if ($user) {
+            $message = "Account updated successfully.";
+        } else {
+            $message = "Error while saving. Please try again.";
+        }
+        return redirect()->route('admin.account.info')->with('account_message', $message);
+    }
+    public function changePasswordStore(Request $request)
+    {
+        $validator = \Validator::make($request->all(), [
+            'old_password' => ['required'],
+            'new_password' => ['required', Rules\Password::defaults()],
+            'confirm_password' => ['required', 'same:new_password', Rules\Password::defaults()],
+        ]);
+        $validator->after(function ($validator) use ($request) {
+            if ($validator->failed()) return;
+            if (!Hash::check($request->input('old_password'), \Auth::user()->password)) {
+                $validator->errors()->add(
+                    'old_password',
+                    'Old password is incorrect.'
+                );
+            }
+        });
+        $validator->validateWithBag('password');
+        $user = \Auth::user()->update([
+            'password' => Hash::make($request->input('new_password')),
+        ]);
+        if ($user) {
+            $message = "Password updated successfully.";
+        } else {
+            $message = "Error while saving. Please try again.";
+        }
+        return redirect()->route('admin.account.info')->with('password_message', $message);
     }
 }
