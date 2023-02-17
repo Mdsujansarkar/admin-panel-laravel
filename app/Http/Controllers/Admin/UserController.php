@@ -8,11 +8,12 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules;
+use App\Services\Admin\UserService;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use App\Actions\Admin\User\CreateUser;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
-use App\Services\Admin\UserService;
 
 class UserController extends Controller
 {
@@ -60,11 +61,9 @@ class UserController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreUserRequest  $request, UserService $userService)
+    public function store(StoreUserRequest  $request, CreateUser $createUser)
     {
-        $data = (object) $request->all();
-        $user = $userService ->createUser( $data );
-        $userService->assignRole($data, $user);
+        $createUser->handle((object) $request->all());
         return redirect()->route('user.index')
             ->with('message', 'User created successfully.');
     }
